@@ -1,6 +1,6 @@
 # QuantScopeApp - Advanced FIX Log Analysis & Monitoring
 
-![QuantScopeApp](assets/demo.gif)
+![QuantScopeApp](quantscope.gif)
 
 > **A simple yet powerful tool for monitoring, analyzing, and troubleshooting FIX protocol messages.**  
 > QuantScopeApp helps financial institutions, brokers, and trading firms gain deeper insights into their FIX messages, ensuring smooth trade operations.
