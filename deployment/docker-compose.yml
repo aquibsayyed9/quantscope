@@ -1,0 +1,59 @@
+services:
+  backend:
+    container_name: fix-backend
+    build: ../backend
+    ports:
+      - "9090:8080"     # HTTP port
+      - "8081:8081"     # HTTPS port
+    environment:
+      - ConnectionStrings__pgsqlconnection=Host=database;Database=quantscopedb;Username=quantuser;Password=quantpassword
+    depends_on:
+      database:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+    logging:
+      driver: "json-file" # Enables stdout logging in JSON format
+      options:
+        max-size: "10m"
+        max-file: "5"
+    networks:
+      - app-network
+
+  database:
+    build: 
+      context: ../database
+      dockerfile: pgDockerfile
+    environment:
+      POSTGRES_DB: quantscopedb
+      POSTGRES_USER: quantuser
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-quantpassword}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quantuser -d quantscopedb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  frontend:
+    build: ../frontend
+    environment:
+          - VITE_API_BASE_URL=http://localhost:9090/api
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

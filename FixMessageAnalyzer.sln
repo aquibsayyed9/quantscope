@@ -1,0 +1,63 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35806.99
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "backend", "backend", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FixMessageAnalyzer", "backend\FixMessageAnalyzer.csproj", "{D9B7915B-324D-45E1-9EBB-196931A718E8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "database", "database", "{186B3173-232C-4DEC-AB60-4A55029657F8}"
+	ProjectSection(SolutionItems) = preProject
+		database\init.sql = database\init.sql
+		database\pgDockerfile = database\pgDockerfile
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "deployment", "deployment", "{8EC462FD-D22E-90A8-E5CE-7E832BA40C5D}"
+	ProjectSection(SolutionItems) = preProject
+		deployment\docker-compose.yml = deployment\docker-compose.yml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "frontend", "frontend", "{04196E14-AA33-40D4-82DA-1224DB8D273E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "helmchart", "helmchart", "{9EBF8C58-3637-4639-A797-ED58D75D598F}"
+	ProjectSection(SolutionItems) = preProject
+		deployment\helmchart\Chart.yaml = deployment\helmchart\Chart.yaml
+		deployment\helmchart\values.yaml = deployment\helmchart\values.yaml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{3AE391B9-80CE-4B87-9798-00841E163F33}"
+	ProjectSection(SolutionItems) = preProject
+		LICENSE = LICENSE
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FixMessageAnalyzer.Tests", "Tests\FixMessageAnalyzer.Tests\FixMessageAnalyzer.Tests.csproj", "{96D1BCC8-014C-0FEF-2DC3-DB5DF1AFF859}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D9B7915B-324D-45E1-9EBB-196931A718E8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D9B7915B-324D-45E1-9EBB-196931A718E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D9B7915B-324D-45E1-9EBB-196931A718E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D9B7915B-324D-45E1-9EBB-196931A718E8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{96D1BCC8-014C-0FEF-2DC3-DB5DF1AFF859}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{96D1BCC8-014C-0FEF-2DC3-DB5DF1AFF859}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{96D1BCC8-014C-0FEF-2DC3-DB5DF1AFF859}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{96D1BCC8-014C-0FEF-2DC3-DB5DF1AFF859}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{D9B7915B-324D-45E1-9EBB-196931A718E8} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{9EBF8C58-3637-4639-A797-ED58D75D598F} = {8EC462FD-D22E-90A8-E5CE-7E832BA40C5D}
+		{96D1BCC8-014C-0FEF-2DC3-DB5DF1AFF859} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1A5B0C1C-A288-431C-A20C-1B0F1589F54D}
+	EndGlobalSection
+EndGlobal

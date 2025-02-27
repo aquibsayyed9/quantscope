@@ -1,0 +1,6 @@
+@FixMessageAnalyzer_HostAddress = http://localhost:5095
+
+GET {{FixMessageAnalyzer_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
