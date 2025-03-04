@@ -1,12 +1,13 @@
 ﻿using FixMessageAnalyzer.Data;
 using FixMessageAnalyzer.Data.Entities;
 using Microsoft.EntityFrameworkCore;
+using QuickFix.Fields;
 
 namespace FixMessageAnalyzer.Services
 {
     public interface IFixMessageService
     {
-        Task<List<FixMessage>> GetMessagesAsync(string[]? msgTypes, string? orderId, DateTime? startTime, DateTime? endTime, int page = 1, int pageSize = 100);
+        Task<List<FixMessage>> GetMessagesAsync(string[]? msgTypes, string? orderId, DateTime? startTime, DateTime? endTime, int page = 1, int pageSize = 100, bool skipHeartbeats = false);
     }
 }
 
@@ -27,7 +28,8 @@ namespace FixMessageAnalyzer.Services
         DateTime? startTime,
         DateTime? endTime,
         int page = 1,
-        int pageSize = 100)
+        int pageSize = 100,
+        bool skipHeartbeats = false)
         {
             // Validate parameters
             if (page < 1) page = 1;
@@ -42,8 +44,12 @@ namespace FixMessageAnalyzer.Services
                 !startTime.HasValue &&
                 !endTime.HasValue)
             {
+                if (skipHeartbeats)
+                    query = query.Where(m => m.MsgType != "0" && m.MsgType != "1");
+
                 return await query
-                    .OrderByDescending(m => m.Timestamp)
+                    .OrderByDescending(m => m.SequenceNumber)
+                    .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .ToListAsync();
             }
@@ -57,18 +63,22 @@ namespace FixMessageAnalyzer.Services
 
             if (endTime.HasValue)
                 query = query.Where(m => m.Timestamp <= endTime.Value);
+            if (skipHeartbeats)
+                query = query.Where(m => m.MsgType != "0" && m.MsgType != "1");
 
+            //if (!string.IsNullOrEmpty(orderId))
+            //    query = query.Where(m => EF.Functions.JsonContains(
+            //        m.Fields,
+            //        $"{{\"37\": \"{orderId}\"}}"
+            //    ));
             if (!string.IsNullOrEmpty(orderId))
-                query = query.Where(m => EF.Functions.JsonContains(
-                    m.Fields,
-                    $"{{\"37\": \"{orderId}\"}}"
-                ));
+                query = query.Where(m => m.OrderID == orderId);
 
             // Calculate skip for pagination
             var skip = (page - 1) * pageSize;
 
             return await query
-                .OrderByDescending(m => m.Timestamp)
+                .OrderByDescending(m => m.SequenceNumber)
                 .Skip(skip)
                 .Take(pageSize)
                 .ToListAsync();

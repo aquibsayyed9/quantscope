@@ -21,7 +21,9 @@ namespace FixMessageAnalyzer.Core.Services
             services.AddScoped<IFixAnalyticsService, FixAnalyticsService>();
             services.AddScoped<IFixLogParsingService, FixLogParsingService>();
             services.AddScoped<IFixMonitoringService, FixMonitoringService>();
-            services.AddScoped<IFixFieldMapperService, FixFieldMapper>();
+            services.AddScoped<IFixDictionaryService, FixDictionaryService>();
+            services.AddHostedService<FixDictionaryInitializer>();
+            services.AddScoped<IFixValidationService, FixValidationService>();
             //services.AddScoped<IConnectorService, ConnectorHostedService>();
             //services.AddHostedService<ConnectorHostedService>();
 

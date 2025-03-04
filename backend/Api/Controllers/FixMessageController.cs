@@ -24,7 +24,8 @@ namespace FixMessageAnalyzer.Api.Controllers
             [FromQuery] DateTime? startTime = null,
             [FromQuery] DateTime? endTime = null,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 100)
+            [FromQuery] int pageSize = 100,
+            [FromQuery] bool skipHeartbeats = false)
         {
             try
             {
@@ -34,7 +35,8 @@ namespace FixMessageAnalyzer.Api.Controllers
                     startTime,
                     endTime,                    
                     page,
-                    pageSize);
+                    pageSize,
+                    skipHeartbeats);
 
                 return Ok(messages);
             }

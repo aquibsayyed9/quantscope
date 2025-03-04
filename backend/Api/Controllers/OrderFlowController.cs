@@ -37,22 +37,10 @@ namespace FixMessageAnalyzer.Controllers
             [FromQuery] int? pageSize = 10,
             [FromQuery] int? pageNumber = 1)
         {
-            // Validate identifier usage
-            if (string.IsNullOrEmpty(orderId) && string.IsNullOrEmpty(clOrdId) && !string.IsNullOrEmpty(symbol))
-            {
-                // Allow search by symbol only
-            }
-            else if (string.IsNullOrEmpty(orderId) && string.IsNullOrEmpty(clOrdId))
-            {
-                return BadRequest("Either OrderId or ClOrdId must be provided unless searching by symbol");
-            }
-
-            // If tracking mode is not specified, infer it from the provided identifiers
+            // If tracking mode is not specified, default it to OrderId
             if (trackingMode == null)
             {
-                trackingMode = !string.IsNullOrEmpty(clOrdId)
-                    ? OrderTrackingMode.ClOrdId
-                    : OrderTrackingMode.OrderId;
+                trackingMode = OrderTrackingMode.OrderId;
             }
 
             // Validate tracking mode matches provided identifier

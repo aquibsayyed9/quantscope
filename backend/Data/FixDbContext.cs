@@ -53,10 +53,104 @@ namespace FixMessageAnalyzer.Data
                     .HasMaxLength(100)
                     .IsRequired();
 
-                //entity.Property(e => e.Fields)
-                //    .HasColumnName("fields")
-                //    .HasColumnType("jsonb")
-                //    .IsRequired();
+                entity.Property(e => e.FixVersion)
+                    .HasColumnName("fix_version")
+                    .HasMaxLength(20)
+                    .IsRequired();
+
+                entity.Property(e => e.MsgTypeName)
+                    .HasColumnName("msg_type_name")
+                    .HasMaxLength(100);
+
+                // Financial data fields
+                entity.Property(e => e.ClOrdID)
+                    .HasColumnName("cl_ord_id")
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.OrderID)
+                    .HasColumnName("order_id")
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.ExecID)
+                    .HasColumnName("exec_id")
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.Symbol)
+                    .HasColumnName("symbol")
+                    .HasMaxLength(50);
+
+                entity.Property(e => e.SecurityType)
+                    .HasColumnName("security_type")
+                    .HasMaxLength(50);
+
+                entity.Property(e => e.Price)
+                    .HasColumnName("price")
+                    .HasColumnType("decimal(18,8)");
+
+                entity.Property(e => e.OrderQty)
+                    .HasColumnName("order_qty")
+                    .HasColumnType("decimal(18,8)");
+
+                entity.Property(e => e.LastQty)
+                    .HasColumnName("last_qty")
+                    .HasColumnType("decimal(18,8)");
+
+                entity.Property(e => e.CumQty)
+                    .HasColumnName("cum_qty")
+                    .HasColumnType("decimal(18,8)");
+
+                entity.Property(e => e.LeavesQty)
+                    .HasColumnName("leaves_qty")
+                    .HasColumnType("decimal(18,8)");
+
+                entity.Property(e => e.Side)
+                    .HasColumnName("side")
+                    .HasMaxLength(10);
+
+                entity.Property(e => e.OrdType)
+                    .HasColumnName("ord_type")
+                    .HasMaxLength(10);
+
+                entity.Property(e => e.TimeInForce)
+                    .HasColumnName("time_in_force")
+                    .HasMaxLength(10);
+
+                entity.Property(e => e.OrdStatus)
+                    .HasColumnName("ord_status")
+                    .HasMaxLength(10);
+
+                entity.Property(e => e.Account)
+                    .HasColumnName("account")
+                    .HasMaxLength(50);
+
+                entity.Property(e => e.TransactTime)
+                    .HasColumnName("transact_time");
+
+                // Validation status
+                entity.Property(e => e.IsValid)
+                    .HasColumnName("is_valid")
+                    .HasDefaultValue(true);
+
+                entity.Property(e => e.ValidationErrors)
+                    .HasColumnName("validation_errors")
+                    .HasColumnType("jsonb")
+                    .HasConversion(
+                        v => JsonSerializer.Serialize(v, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }),
+                        v => JsonSerializer.Deserialize<List<string>>(v, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }) ?? new List<string>()
+                    );
+
+                // Additional indexes
+                entity.HasIndex(e => e.Symbol)
+                    .HasDatabaseName("idx_messages_symbol");
+
+                entity.HasIndex(e => e.ClOrdID)
+                    .HasDatabaseName("idx_messages_cl_ord_id");
+
+                entity.HasIndex(e => e.Side)
+                    .HasDatabaseName("idx_messages_side");
+
+                entity.HasIndex(e => e.OrdStatus)
+                    .HasDatabaseName("idx_messages_ord_status");
 
                 entity.Property(e => e.Fields)
                 .HasColumnType("jsonb")
@@ -79,7 +173,15 @@ namespace FixMessageAnalyzer.Data
                 entity.HasIndex(e => e.SenderCompID)
                     .HasDatabaseName("idx_messages_sender");
                 entity.HasIndex(e => e.TargetCompID)
-                    .HasDatabaseName("idx_messages_target");
+                    .HasDatabaseName("idx_messages_target");                
+                entity.HasIndex(e => e.Symbol)
+                    .HasDatabaseName("idx_messages_symbol");
+                entity.HasIndex(e => e.ClOrdID)
+                    .HasDatabaseName("idx_messages_cl_ord_id");
+                entity.HasIndex(e => e.Side)
+                    .HasDatabaseName("idx_messages_side");
+                entity.HasIndex(e => e.OrdStatus)
+                    .HasDatabaseName("idx_messages_ord_status");
 
                 entity.Property<string>("SessionId")
                     .HasComputedColumnSql("sender_comp_id || '-' || target_comp_id", true)

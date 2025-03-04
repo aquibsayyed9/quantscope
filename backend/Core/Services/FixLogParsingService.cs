@@ -1,13 +1,15 @@
 ﻿using FixMessageAnalyzer.Core.Services;
 using FixMessageAnalyzer.Core.Services;
 using FixMessageAnalyzer.Data.Entities;
+using QuickFix.Fields;
+using System.ComponentModel.Design;
 using System.Globalization;
 
 namespace FixMessageAnalyzer.Services
 {
     public interface IFixLogParsingService
     {
-        FixMessage? ParseFixLogLine(string logLine);
+        FixMessage? ParseFixLogLine(string logLine, string fixVersion = null);
     }
 }
 
@@ -16,7 +18,7 @@ namespace FixMessageAnalyzer.Services
     public class FixLogParsingService : IFixLogParsingService
     {
         private readonly ILogger<FixLogParsingService> _logger;
-        private readonly IFixFieldMapperService _fieldMapper;
+        private readonly IFixDictionaryService _dictionaryService;
         private readonly IFixMonitoringService _monitoringService;
 
         private static readonly string[] PossibleDelimiters = new[]
@@ -28,15 +30,15 @@ namespace FixMessageAnalyzer.Services
 
         public FixLogParsingService(
             IFixMonitoringService monitoringService,
-            IFixFieldMapperService fieldMapper,
+            IFixDictionaryService fieldMapper,
             ILogger<FixLogParsingService> logger)
         {
-            _fieldMapper = fieldMapper;
+            _dictionaryService = fieldMapper;
             _monitoringService = monitoringService;
             _logger = logger;
         }
 
-        public FixMessage? ParseFixLogLine(string logLine)
+        public FixMessage? ParseFixLogLine(string logLine, string fixVersion = null)
         {
             try
             {
@@ -72,10 +74,30 @@ namespace FixMessageAnalyzer.Services
                     return null;
                 }
 
-                // If no external timestamp found, try to use SendingTime (tag 52) from FIX message
-                if (!timestamp.HasValue && fields.TryGetValue("52", out string? sendingTime))
+                string msgType = fields.GetValueOrDefault("35", "Unknown");
+
+                string messageVersion;
+                if (!string.IsNullOrEmpty(fixVersion))
                 {
-                    timestamp = ParseFixTimestamp(sendingTime);
+                    messageVersion = fixVersion;
+                }
+                else
+                {
+                    // Auto-detect version
+                    try
+                    {
+                        messageVersion = _dictionaryService.DetectVersion(fields);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to determine FIX version, using default");
+                        messageVersion = "FIX.4.4"; // Default version as fallback
+                    }
+                }
+
+                if (timestamp.HasValue && timestamp.Value.Kind != DateTimeKind.Utc)
+                {
+                    timestamp = DateTime.SpecifyKind(timestamp.Value, DateTimeKind.Utc);
                 }
 
                 // Fallback to current time if no timestamp found
@@ -84,13 +106,69 @@ namespace FixMessageAnalyzer.Services
                 var message = new FixMessage
                 {
                     Timestamp = timestamp.Value,
-                    MsgType = fields.GetValueOrDefault("35", "Unknown"),
+                    MsgType = msgType,
+                    MsgTypeName = _dictionaryService.GetMessageTypeName(msgType, messageVersion),
                     SequenceNumber = int.TryParse(fields.GetValueOrDefault("34", "-1"), out int seqNum) ? seqNum : -1,
                     SenderCompID = fields.GetValueOrDefault("49", "Unknown"),
                     TargetCompID = fields.GetValueOrDefault("56", "Unknown"),
                     ExecType = fields.GetValueOrDefault("150"),
-                    Fields = fields
+                    FixVersion = messageVersion,
+                    Fields = fields,
+
+                    // Extract common financial fields
+                    ClOrdID = fields.GetValueOrDefault("11"),
+                    OrderID = fields.GetValueOrDefault("37"),
+                    ExecID = fields.GetValueOrDefault("17"),
+                    Symbol = fields.GetValueOrDefault("55"),
+                    SecurityType = fields.GetValueOrDefault("167"),
+                    Side = fields.GetValueOrDefault("54"),
+                    OrdType = fields.GetValueOrDefault("40"),
+                    TimeInForce = fields.GetValueOrDefault("59"),
+                    OrdStatus = fields.GetValueOrDefault("39"),
+                    Account = fields.GetValueOrDefault("1")
                 };
+
+                // Try to parse numeric values
+                if (fields.TryGetValue("44", out var priceStr) && decimal.TryParse(priceStr, out var price))
+                {
+                    message.Price = price;
+                }
+
+                if (fields.TryGetValue("38", out var qtyStr) && decimal.TryParse(qtyStr, out var qty))
+                {
+                    message.OrderQty = qty;
+                }
+
+                if (fields.TryGetValue("32", out var lastQtyStr) && decimal.TryParse(lastQtyStr, out var lastQty))
+                {
+                    message.LastQty = lastQty;
+                }
+
+                if (fields.TryGetValue("14", out var cumQtyStr) && decimal.TryParse(cumQtyStr, out var cumQty))
+                {
+                    message.CumQty = cumQty;
+                }
+
+                if (fields.TryGetValue("151", out var leavesQtyStr) && decimal.TryParse(leavesQtyStr, out var leavesQty))
+                {
+                    message.LeavesQty = leavesQty;
+                }
+
+                // Parse transaction time
+                if (fields.TryGetValue("60", out var transactTimeStr))
+                {
+                    var transactTime = ParseFixTimestamp(transactTimeStr);
+
+                    // Ensure TransactTime is UTC if it has a value
+                    if (transactTime.HasValue && transactTime.Value.Kind != DateTimeKind.Utc)
+                    {
+                        message.TransactTime = DateTime.SpecifyKind(transactTime.Value, DateTimeKind.Utc);
+                    }
+                    else
+                    {
+                        message.TransactTime = transactTime;
+                    }
+                }
 
                 _logger.LogDebug(
                     "Parsed message: Type={MsgType}, SeqNum={SeqNum}, Sender={Sender}, Target={Target}, Fields={FieldCount}",

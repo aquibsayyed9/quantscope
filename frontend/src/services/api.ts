@@ -67,6 +67,7 @@ export interface GetMessagesParams {
   endTime?: string;
   page: number;
   pageSize: number;
+  skipHeartbeats: boolean;
 }
 
 export const api = {
@@ -76,6 +77,7 @@ export const api = {
     // Only add parameters that have values
     if (params.page) queryString.append('page', params.page.toString());
     if (params.pageSize) queryString.append('pageSize', params.pageSize.toString());
+    if (params.skipHeartbeats) queryString.append('skipHeartbeats', params.skipHeartbeats.toString());
     if (Array.isArray(params.msgTypes) && params.msgTypes.length > 0) {
       // Add each message type as a separate query parameter with the same key
       params.msgTypes.forEach(type => {
@@ -250,7 +252,7 @@ export const api = {
     const queryString = new URLSearchParams();
     
     if (params.orderId) queryString.append('orderId', params.orderId);
-    queryString.append('orderId', 'OrderId');
+    queryString.append('trackingMode', params.trackingMode ?? 'OrderId');
     if (params.symbol) queryString.append('symbol', params.symbol);
     if (params.pageSize) queryString.append('pageSize', params.pageSize.toString());
     if (params.pageNumber) queryString.append('pageNumber', params.pageNumber.toString());
