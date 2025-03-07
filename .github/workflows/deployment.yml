@@ -33,7 +33,7 @@ jobs:
           host: ${{ secrets.ORACLE_VM_IP }}
           username: ${{ secrets.ORACLE_VM_USER }}
           key: ${{ secrets.ORACLE_SSH_PRIVATE_KEY }}
-          envs: DB_HOST,DB_NAME,DB_PORT
+          envs: DB_HOST,DB_NAME,DB_USER,DB_PASSWORD,DB_PORT
           script: |
             # Ensure directory exists
             mkdir -p /home/${{ secrets.ORACLE_VM_USER }}/deployment
