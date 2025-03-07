@@ -3,12 +3,12 @@ name: Deploy QuantScope App
 on:
   push:
     branches:
-      - main  # Change this if needed
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: production  # Set the environment name here
+    environment: production
 
     steps:
       - name: Checkout Repository
@@ -19,13 +19,13 @@ jobs:
 
       - name: Build and Push Backend Image
         run: |
-          docker build -t your-dockerhub-username/fix-backend:latest ./backend
-          docker push your-dockerhub-username/fix-backend:latest
+          docker build -t aquibsayyed9/fixtool-quantscope-backend:latest ./backend
+          docker push aquibsayyed9/fixtool-quantscope-backend:latest
 
       - name: Build and Push Frontend Image
         run: |
-          docker build -t your-dockerhub-username/fix-frontend:latest ./frontend
-          docker push your-dockerhub-username/fix-frontend:latest
+          docker build -t aquibsayyed9/fixtool-quantscope-frontend:latest ./frontend
+          docker push aquibsayyed9/fixtool-quantscope-frontend:latest
 
       - name: Deploy to Oracle VM
         uses: appleboy/ssh-action@v0.1.10
@@ -37,11 +37,11 @@ jobs:
             cd /home/${{ secrets.ORACLE_VM_USER }}/app
 
             # Pull latest images
-            docker pull your-dockerhub-username/fix-backend:latest
-            docker pull your-dockerhub-username/fix-frontend:latest
+            docker pull aquibsayyed9/fixtool-quantscope-backend:latest
+            docker pull aquibsayyed9/fixtool-quantscope-frontend:latest
 
             # Stop and remove existing containers
             docker-compose down
 
-            # Start only frontend & backend (excluding database)
+            # Start only backend and frontend (database is on VM)
             docker-compose up -d backend frontend
