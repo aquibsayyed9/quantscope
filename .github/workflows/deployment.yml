@@ -36,8 +36,21 @@ jobs:
           envs: DB_HOST,DB_NAME,DB_PORT
           script: |
             # Ensure directory exists
-            mkdir -p /home/${{ secrets.ORACLE_VM_USER }}/app
-            cd /home/${{ secrets.ORACLE_VM_USER }}/app
+            mkdir -p /home/${{ secrets.ORACLE_VM_USER }}/deployment
+            cd /home/${{ secrets.ORACLE_VM_USER }}
+
+            # Clone the latest repo (if not already cloned)
+            if [ ! -d "quantscope-repo" ]; then
+              git clone https://github.com/aquibsayyed9/quantscope.git quantscope-repo
+            else
+              cd quantscope-repo
+              git pull origin main
+            fi
+
+            # Copy the latest deployment files to the correct location
+            cp -r quantscope-repo/deployment/* /home/${{ secrets.ORACLE_VM_USER }}/deployment/
+
+            cd /home/${{ secrets.ORACLE_VM_USER }}/deployment
 
             # Ensure Docker Compose is installed
             sudo apt update
