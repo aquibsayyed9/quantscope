@@ -35,11 +35,10 @@ jobs:
           key: ${{ secrets.ORACLE_SSH_PRIVATE_KEY }}
           envs: DB_HOST,DB_NAME,DB_USER,DB_PASSWORD,DB_PORT
           script: |
-            # Ensure directory exists
-            mkdir -p /home/${{ secrets.ORACLE_VM_USER }}/deployment
+            # Navigate to the home directory
             cd /home/${{ secrets.ORACLE_VM_USER }}
 
-            # Clone the latest repo (if not already cloned)
+            # Clone the repo if not already present
             if [ ! -d "quantscope-repo" ]; then
               git clone https://github.com/aquibsayyed9/quantscope.git quantscope-repo
             else
@@ -47,10 +46,26 @@ jobs:
               git pull origin main
             fi
 
-            # Copy the latest deployment files to the correct location
-            cp -r quantscope-repo/deployment/* /home/${{ secrets.ORACLE_VM_USER }}/deployment/
+            # Verify the repository contents
+            ls -la /home/${{ secrets.ORACLE_VM_USER }}/quantscope-repo
 
+            # Ensure deployment folder exists before copying
+            if [ -d "/home/${{ secrets.ORACLE_VM_USER }}/quantscope-repo/deployment" ]; then
+              cp -r /home/${{ secrets.ORACLE_VM_USER }}/quantscope-repo/deployment /home/${{ secrets.ORACLE_VM_USER }}/
+            else
+              echo "Error: deployment folder not found in the repository!"
+              exit 1
+            fi
+
+            # Navigate to deployment directory
             cd /home/${{ secrets.ORACLE_VM_USER }}/deployment
+
+            # Create the .env file with database credentials
+            echo "DB_HOST=${{ vars.DB_HOST }}" > .env
+            echo "DB_NAME=${{ vars.DB_NAME }}" >> .env
+            echo "DB_USER=${{ secrets.DB_USER }}" >> .env
+            echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+            echo "DB_PORT=${{ vars.DB_PORT }}" >> .env
 
             # Ensure Docker Compose is installed
             sudo apt update
@@ -63,10 +78,5 @@ jobs:
             # Stop and remove existing containers
             docker compose down
 
-            # Start backend & frontend with secrets injected
-            DB_USER=${{ secrets.DB_USER }} \
-            DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
-            DB_HOST=${{ vars.DB_HOST }} \
-            DB_NAME=${{ vars.DB_NAME }} \
-            DB_PORT=${{ vars.DB_PORT }} \
-            docker compose up -d backend frontend
+            # Start backend & frontend with environment variables
+            docker compose --env-file .env up -d backend frontend
