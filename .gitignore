@@ -48,3 +48,4 @@ bld/
 *.pidb
 *.svclog
 *.scc
+/backend/appsettings.json

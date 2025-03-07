@@ -6,7 +6,7 @@ namespace FixMessageAnalyzer.Core.Services
 {
     public interface IFixMonitoringService
     {
-        Task<MonitoringStatsDto> GetMonitoringStatsAsync();
+        Task<MonitoringStatsDto> GetMonitoringStatsAsync(int userId);
     }
 
     public class FixMonitoringService : IFixMonitoringService
@@ -19,27 +19,31 @@ namespace FixMessageAnalyzer.Core.Services
             _dbContext = dbContext;
         }
 
-        public async Task<MonitoringStatsDto> GetMonitoringStatsAsync()
+        public async Task<MonitoringStatsDto> GetMonitoringStatsAsync(int userId)
         {
             var stats = new MonitoringStatsDto
             {
-                MessageRates = await GetMessageRatesAsync(),
-                LastMessageTimestamps = await GetLastMessageTimestampsAsync(),
-                MessageTypes = await GetMessageTypeStatsAsync(),
-                LatencyStats = await GetLatencyStatsAsync(),
-                SessionHealth = await GetSessionHealthAsync(),
-                SequenceResets = await GetSequenceResetsCountAsync(),
-                RejectedMessages = await GetRejectedMessagesCountAsync(),
-                ExchangeResets = await GetExchangeResetsCountAsync(),
-                SessionMessages = await GetSessionMessagesCountAsync()
+                MessageRates = await GetMessageRatesAsync(userId),
+                LastMessageTimestamps = await GetLastMessageTimestampsAsync(userId),
+                MessageTypes = await GetMessageTypeStatsAsync(userId),
+                LatencyStats = await GetLatencyStatsAsync(userId),
+                SessionHealth = await GetSessionHealthAsync(userId),
+                SequenceResets = await GetSequenceResetsCountAsync(userId),
+                RejectedMessages = await GetRejectedMessagesCountAsync(userId),
+                ExchangeResets = await GetExchangeResetsCountAsync(userId),
+                SessionMessages = await GetSessionMessagesCountAsync(userId)
             };
 
             return stats;
         }
 
-        private async Task<List<MessageRateDto>> GetMessageRatesAsync()
+        private async Task<List<MessageRateDto>> GetMessageRatesAsync(int userId)
         {
-            return await _dbContext.Messages
+            var query = _dbContext.Messages.AsQueryable();
+
+            query = query.Where(m => m.UserId == userId);
+
+            return await query
                 .GroupBy(m => new { m.SenderCompID, m.TargetCompID })
                 .Select(g => new MessageRateDto
                 {
@@ -49,9 +53,13 @@ namespace FixMessageAnalyzer.Core.Services
                 .ToListAsync();
         }
 
-        private async Task<List<LastMessageTimestampDto>> GetLastMessageTimestampsAsync()
+        private async Task<List<LastMessageTimestampDto>> GetLastMessageTimestampsAsync(int userId)
         {
-            return await _dbContext.Messages
+            var query = _dbContext.Messages.AsQueryable();
+
+            query = query.Where(m => m.UserId == userId);
+
+            return await query
                 .GroupBy(m => new { m.SenderCompID, m.TargetCompID })
                 .Select(g => new LastMessageTimestampDto
                 {
@@ -61,11 +69,14 @@ namespace FixMessageAnalyzer.Core.Services
                 .ToListAsync();
         }
 
-        private async Task<MessageTypeStatsDto> GetMessageTypeStatsAsync()
+        private async Task<MessageTypeStatsDto> GetMessageTypeStatsAsync(int userId)
         {
             var today = DateTime.UtcNow.Date;
+            var query = _dbContext.Messages.AsQueryable();
 
-            var messageTypes = await _dbContext.Messages
+            query = query.Where(m => m.UserId == userId);
+
+            var messageTypes = await query
                 .Where(m => m.Timestamp >= today)
                 .GroupBy(m => m.MsgType)
                 .Select(g => new { MsgType = g.Key, Count = g.Count() })
@@ -73,43 +84,52 @@ namespace FixMessageAnalyzer.Core.Services
 
             return new MessageTypeStatsDto
             {
-                NewOrders = await GetNewOrdersCountAsync(today),
-                RestatedOrders = await GetRestatedOrdersCountAsync(),
-                CancelledOrders = await GetCancelledOrdersCountAsync(),
+                NewOrders = await GetNewOrdersCountAsync(today, userId),
+                RestatedOrders = await GetRestatedOrdersCountAsync(userId),
+                CancelledOrders = await GetCancelledOrdersCountAsync(userId),
                 MessageTypeDistribution = messageTypes
             };
         }
 
-        private async Task<int> GetNewOrdersCountAsync(DateTime today)
+        private async Task<int> GetNewOrdersCountAsync(DateTime today, int userId)
         {
-            return await _dbContext.Messages
-                .Where(m => m.MsgType == "D" && m.Timestamp >= today)
-                .CountAsync();
+            var query = _dbContext.Messages.Where(m => m.MsgType == "D" && m.Timestamp >= today);
+
+            query = query.Where(m => m.UserId == userId);
+
+            return await query.CountAsync();
         }
 
-        private async Task<int> GetRestatedOrdersCountAsync()
+        private async Task<int> GetRestatedOrdersCountAsync(int userId)
         {
-            return await _dbContext.Messages
-                .Where(m => m.MsgType == "D" &&
+            var query = _dbContext.Messages.Where(m => m.MsgType == "D" &&
                            EF.Functions.JsonExists(m.Fields, "PossDupFlag") &&
-                           EF.Functions.JsonContains(m.Fields, @"{""PossDupFlag"": ""Y""}"))
-                .CountAsync();
+                           EF.Functions.JsonContains(m.Fields, @"{""PossDupFlag"": ""Y""}"));
+
+            query = query.Where(m => m.UserId == userId);
+
+            return await query.CountAsync();
         }
 
-        private async Task<int> GetCancelledOrdersCountAsync()
+        private async Task<int> GetCancelledOrdersCountAsync(int userId)
         {
-            return await _dbContext.Messages
-                .Where(m => m.MsgType == "F" ||
+            var query = _dbContext.Messages.Where(m => m.MsgType == "F" ||
                           (m.MsgType == "8" &&
                            EF.Functions.JsonExists(m.Fields, "ExecType") &&
-                           EF.Functions.JsonContains(m.Fields, @"{""ExecType"": ""4""}")))
-                .CountAsync();
+                           EF.Functions.JsonContains(m.Fields, @"{""ExecType"": ""4""}")));
+
+            query = query.Where(m => m.UserId == userId);
+
+            return await query.CountAsync();
         }
 
-        private async Task<LatencyStatsDto> GetLatencyStatsAsync()
+        private async Task<LatencyStatsDto> GetLatencyStatsAsync(int userId)
         {
-            var latencyData = await _dbContext.Messages
-                .Where(m => EF.Functions.JsonExists(m.Fields, "TransactTime"))
+            var query = _dbContext.Messages.Where(m => EF.Functions.JsonExists(m.Fields, "TransactTime"));
+
+            query = query.Where(m => m.UserId == userId);
+
+            var latencyData = await query
                 .OrderByDescending(m => m.Timestamp)
                 .Take(LatencySampleSize)
                 .Select(m => new LatencyDataItem
@@ -168,13 +188,18 @@ namespace FixMessageAnalyzer.Core.Services
                 .ToList();
         }
 
-        private async Task<SessionHealthDto> GetSessionHealthAsync()
+        private async Task<SessionHealthDto> GetSessionHealthAsync(int userId)
         {
-            var sessions = await GetSessionMessagesAsync();
+            var sessions = await GetSessionMessagesAsync(userId);
             var sessionGaps = await CalculateSequenceGapsAsync(sessions);
             var totalGaps = sessionGaps.Values.Sum(gaps => gaps.Count);
-            var totalMessages = await _dbContext.Messages.CountAsync();
-            var sequenceResets = await GetSequenceResetsCountAsync();
+
+            // Get total message count for health score calculation
+            var query = _dbContext.Messages.AsQueryable();
+            query = query.Where(m => m.UserId == userId);
+            var totalMessages = await query.CountAsync();
+
+            var sequenceResets = await GetSequenceResetsCountAsync(userId);
 
             return new SessionHealthDto
             {
@@ -196,9 +221,13 @@ namespace FixMessageAnalyzer.Core.Services
             public DateTime Timestamp { get; set; }
         }
 
-        private async Task<List<SessionMessageInfo>> GetSessionMessagesAsync()
+        private async Task<List<SessionMessageInfo>> GetSessionMessagesAsync(int userId)
         {
-            return await _dbContext.Messages
+            var query = _dbContext.Messages.AsQueryable();
+
+            query = query.Where(m => m.UserId == userId);
+
+            return await query
                 .GroupBy(m => m.SessionId)
                 .Select(g => new SessionMessageInfo
                 {
@@ -288,34 +317,45 @@ namespace FixMessageAnalyzer.Core.Services
             return Math.Max(0, 100 - ((totalGaps + sequenceResets) / (double)totalMessages * 100));
         }
 
-        private async Task<int> GetSequenceResetsCountAsync()
+        private async Task<int> GetSequenceResetsCountAsync(int? userId = null)
         {
-            return await _dbContext.Messages
-                .CountAsync(m => m.MsgType == "4");
+            var query = _dbContext.Messages.Where(m => m.MsgType == "4");
+
+            query = query.Where(m => m.UserId == userId);
+
+            return await query.CountAsync();
         }
 
-        private async Task<int> GetRejectedMessagesCountAsync()
+        private async Task<int> GetRejectedMessagesCountAsync(int? userId = null)
         {
-            return await _dbContext.Messages
-                .Where(m => m.MsgType == "8" &&
+            var query = _dbContext.Messages.Where(m => m.MsgType == "8" &&
                        EF.Functions.JsonExists(m.Fields, "ExecType") &&
-                       EF.Functions.JsonContains(m.Fields, @"{""ExecType"": ""8""}"))
-                .CountAsync();
+                       EF.Functions.JsonContains(m.Fields, @"{""ExecType"": ""8""}"));
+
+            query = query.Where(m => m.UserId == userId);
+
+            return await query.CountAsync();
         }
 
-        private async Task<int> GetExchangeResetsCountAsync()
+        private async Task<int> GetExchangeResetsCountAsync(int userId)
         {
-            return await _dbContext.Messages
-                .CountAsync(m => m.MsgType == "4" &&
+            var query = _dbContext.Messages.Where(m => m.MsgType == "4" &&
                                m.SenderCompID.StartsWith("EXCHANGE"));
+
+            query = query.Where(m => m.UserId == userId);
+
+            return await query.CountAsync();
         }
 
-        private async Task<int> GetSessionMessagesCountAsync()
+        private async Task<int> GetSessionMessagesCountAsync(int userId)
         {
-            return await _dbContext.Messages
-                .CountAsync(m => m.MsgType == "A" ||
+            var query = _dbContext.Messages.Where(m => m.MsgType == "A" ||
                                m.MsgType == "5" ||
                                m.MsgType == "0");
+
+            query = query.Where(m => m.UserId == userId);
+
+            return await query.CountAsync();
         }
     }
 }

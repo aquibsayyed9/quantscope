@@ -45,5 +45,9 @@ namespace FixMessageAnalyzer.Data.Entities
 
         // Metadata 
         public DateTime CreatedAt { get; set; }
+
+        // User entity
+        public int? UserId { get; set; }
+        public virtual User User { get; set; }
     }
 }

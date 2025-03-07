@@ -13,7 +13,7 @@ namespace FixMessageAnalyzer.Services
 {
     public interface IFixOrderService
     {
-        Task<OrderFlowResponse> GetOrderFlowAsync(OrderFlowFilterDto filter);
+        Task<OrderFlowResponse> GetOrderFlowAsync(int userId, OrderFlowFilterDto filter);
     }
 }
 
@@ -28,7 +28,7 @@ namespace FixMessageAnalyzer.Services
             _dbContext = dbContext;
         }
 
-        public async Task<OrderFlowResponse> GetOrderFlowAsync(OrderFlowFilterDto filter)
+        public async Task<OrderFlowResponse> GetOrderFlowAsync(int userId, OrderFlowFilterDto filter)
         {
             // Set default values: 5 latest orders when no parameters are provided
             var hasAnyFilter = filter.OrderId != null ||
@@ -61,6 +61,7 @@ namespace FixMessageAnalyzer.Services
                 if (!hasAnyFilter)
                 {
                     var simpleQuery = _dbContext.Messages
+                        .Where(m => m.UserId == userId) // Filter by user ID
                         .Where(m => new[] { "D", "8", "9" }.Contains(m.MsgType))
                         .OrderByDescending(m => m.Timestamp);
 
@@ -77,7 +78,8 @@ namespace FixMessageAnalyzer.Services
                     var sql = @"
                     SELECT id 
                     FROM fix.messages 
-                    WHERE msg_type IN ('D', '8', '9')
+                    WHERE user_id = @UserId
+                    AND msg_type IN ('D', '8', '9')
                     AND (@OrderId IS NULL OR ""Fields""->>'37' = @OrderId)
                     AND (@ClOrdId IS NULL OR ""Fields""->>'11' = @ClOrdId OR ""Fields""->>'41' = @ClOrdId)
                     AND (@Symbol IS NULL OR ""Fields""->>'55' = @Symbol)
@@ -89,7 +91,8 @@ namespace FixMessageAnalyzer.Services
                     var countSql = @"
                     SELECT COUNT(*)
                     FROM fix.messages 
-                    WHERE msg_type IN ('D', '8', '9')
+                    WHERE user_id = @UserId
+                    AND msg_type IN ('D', '8', '9')
                     AND (@OrderId IS NULL OR ""Fields""->>'37' = @OrderId)
                     AND (@ClOrdId IS NULL OR ""Fields""->>'11' = @ClOrdId OR ""Fields""->>'41' = @ClOrdId)
                     AND (@Symbol IS NULL OR ""Fields""->>'55' = @Symbol)
@@ -107,14 +110,14 @@ namespace FixMessageAnalyzer.Services
                         using (var command = connection.CreateCommand())
                         {
                             command.CommandText = countSql;
-                            AddParameters(command, filter, null, null);
+                            AddParameters(command, filter, null, null, userId);
                             totalCount = Convert.ToInt32(await command.ExecuteScalarAsync());
                         }
 
                         using (var command = connection.CreateCommand())
                         {
                             command.CommandText = sql + " OFFSET @Skip LIMIT @Take";
-                            AddParameters(command, filter, skip, pageSize);
+                            AddParameters(command, filter, skip, pageSize, userId);
 
                             using (var reader = await command.ExecuteReaderAsync())
                             {
@@ -126,11 +129,11 @@ namespace FixMessageAnalyzer.Services
                         }
                     }
 
-                    // Now load the full entities by ID
+                    // Now load the full entities by ID, ensuring we only get the user's messages
                     messages = matchingIds.Count > 0
                     ? await _dbContext.Messages
                         .AsNoTracking() // Prevents tracking, improving performance
-                        .Where(m => matchingIds.Contains(m.Id))
+                        .Where(m => matchingIds.Contains(m.Id) && m.UserId == userId)
                         .OrderByDescending(m => m.Timestamp)
                         .ToListAsync()
                     : new List<FixMessage>();
@@ -155,8 +158,15 @@ namespace FixMessageAnalyzer.Services
         }
 
         // Helper to add parameters to both SQL commands
-        private void AddParameters(DbCommand command, OrderFlowFilterDto filter, int? skip, int? take)
+        private void AddParameters(DbCommand command, OrderFlowFilterDto filter, int? skip, int? take, int userId)
         {
+            // Add user ID parameter
+            var userIdParam = command.CreateParameter();
+            userIdParam.ParameterName = "@UserId";
+            userIdParam.Value = userId;
+            ((NpgsqlParameter)userIdParam).NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Integer;
+            command.Parameters.Add(userIdParam);
+
             // Use NpgsqlParameter to explicitly set types
             var orderIdParam = command.CreateParameter();
             orderIdParam.ParameterName = "@OrderId";

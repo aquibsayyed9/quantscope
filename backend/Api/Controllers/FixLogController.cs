@@ -1,12 +1,14 @@
 ﻿using FixMessageAnalyzer.Core.Services;
 using FixMessageAnalyzer.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FixMessageAnalyzer.Api.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/fixlog")]
-    public class FixLogController : ControllerBase
+    public class FixLogController : BaseApiController
     {
         private readonly IFixLogParsingService _fixLogParser;
         private readonly IFixMonitoringService _monitoringService;
@@ -17,20 +19,12 @@ namespace FixMessageAnalyzer.Api.Controllers
             _monitoringService = monitoringService;
         }
 
-        //[HttpGet("parse")]
-        //public IActionResult ParseLog()
-        //{
-        //    string filePath = "C:\\pws\\FixMessageAnalyzer\\FixLogFiles\\FSRA_FSRA_main.out";
-        //    IEnumerable<FixMessage> parsedData = _fixLogParser.ReadFixLog(filePath);
-        //    return Ok(parsedData);
-        //}
-
         [HttpGet("monitoring")]
         public async Task<IActionResult> GetMonitoringStats()
         {
             try
             {
-                var stats = await _monitoringService.GetMonitoringStatsAsync();
+                var stats = await _monitoringService.GetMonitoringStatsAsync(GetCurrentUserId());
                 return Ok(stats);
             }
             catch (Exception ex)

@@ -3,12 +3,14 @@ using Microsoft.AspNetCore.Mvc;
 using FixMessageAnalyzer.Services;
 using System;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FixMessageAnalyzer.Api.Controllers
 {
     [Route("api/messages")]
+    [Authorize]
     [ApiController]
-    public class FixMessageController : ControllerBase
+    public class FixMessageController : BaseApiController
     {
         private readonly IFixMessageService _fixMessageService;
 
@@ -30,6 +32,7 @@ namespace FixMessageAnalyzer.Api.Controllers
             try
             {
                 var messages = await _fixMessageService.GetMessagesAsync(
+                    GetCurrentUserId(),
                     msgTypes,
                     orderId,
                     startTime,

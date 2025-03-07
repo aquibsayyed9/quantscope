@@ -1,6 +1,5 @@
 import { MonitoringStats, FixMessage } from '../types/fix';
 
-// const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:7263/api';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://localhost:7263/api';
 
 export interface Connector {
@@ -70,16 +69,137 @@ export interface GetMessagesParams {
   skipHeartbeats: boolean;
 }
 
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: {
+    id: number;
+    email: string;
+  };
+}
+
+// Helper function to get auth headers
+// const getAuthHeaders = (): HeadersInit => {
+//   const token = localStorage.getItem('token');
+//   const headers: Record<string, string> = {
+//     'Accept': 'application/json',
+//     'Content-Type': 'application/json',
+//   };
+
+//   if (token) {
+//     headers['Authorization'] = `Bearer ${token}`;
+//   }
+
+//   return headers;
+// };
+
+// Secure fetch wrapper for authenticated API calls
+const securedFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
+  const token = localStorage.getItem('token');
+
+  if (!token) {
+    console.error('Authentication token missing for request to:', url);
+    throw new Error('Authentication required');
+  }
+
+  try {
+    const headers = {
+      ...options.headers,
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    };
+
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
+
+    if (response.status === 401) {
+      console.error('Authentication failed (401) for request to:', url);
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+      throw new Error('Authentication expired');
+    }
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
+    }
+
+    return response;
+  } catch (error) {
+    console.error('Error during API request to', url, error);
+    throw error;
+  }
+};
+
 export const api = {
+  // Authentication methods
+  async login(credentials: LoginRequest): Promise<AuthResponse> {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(credentials),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Login failed');
+    }
+
+    const data = await response.json();
+    localStorage.setItem('token', data.token);
+    return data;
+  },
+
+  async register(userData: RegisterRequest): Promise<AuthResponse> {
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(userData),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Registration failed');
+    }
+
+    const data = await response.json();
+    localStorage.setItem('token', data.token);
+    return data;
+  },
+
+  async getCurrentUser(): Promise<{ id: number; email: string }> {
+    const response = await securedFetch(`${API_BASE_URL}/auth/me`);
+    return response.json();
+  },
+
+  logout(): void {
+    localStorage.removeItem('token');
+  },
+
+  // Data methods - all secured with authentication
   async getMessages(params: GetMessagesParams): Promise<FixMessage[]> {
     const queryString = new URLSearchParams();
-    
+
     // Only add parameters that have values
     if (params.page) queryString.append('page', params.page.toString());
     if (params.pageSize) queryString.append('pageSize', params.pageSize.toString());
     if (params.skipHeartbeats) queryString.append('skipHeartbeats', params.skipHeartbeats.toString());
     if (Array.isArray(params.msgTypes) && params.msgTypes.length > 0) {
-      // Add each message type as a separate query parameter with the same key
       params.msgTypes.forEach(type => {
         queryString.append('msgTypes', type);
       });
@@ -87,26 +207,14 @@ export const api = {
     if (params.orderId) queryString.append('orderId', params.orderId);
     if (params.startTime) queryString.append('startTime', params.startTime);
     if (params.endTime) queryString.append('endTime', params.endTime);
-    
-    const response = await fetch(`${API_BASE_URL}/messages?${queryString}`, {
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch messages');
-    }
-
+    const response = await securedFetch(`${API_BASE_URL}/messages?${queryString}`);
     return response.json();
   },
 
-  // Updated method that would return pagination metadata
-  // Note: This assumes your backend API supports this response format
   async getMessagesWithPagination(params: GetMessagesParams): Promise<MessagesPaginationResponse> {
     const queryString = new URLSearchParams();
-    
-    // Only add parameters that have values
+
     if (params.page) queryString.append('page', params.page.toString());
     if (params.pageSize) queryString.append('pageSize', params.pageSize.toString());
     if (Array.isArray(params.msgTypes) && params.msgTypes.length > 0) {
@@ -117,127 +225,89 @@ export const api = {
     if (params.orderId) queryString.append('orderId', params.orderId);
     if (params.startTime) queryString.append('startTime', params.startTime);
     if (params.endTime) queryString.append('endTime', params.endTime);
-    
-    const response = await fetch(`${API_BASE_URL}/messages/paginated?${queryString}`, {
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch messages');
-    }
-
+    const response = await securedFetch(`${API_BASE_URL}/messages/paginated?${queryString}`);
     return response.json();
   },
 
   async getMonitoringStats(): Promise<MonitoringStats> {
-    const response = await fetch(`${API_BASE_URL}/fixlog/monitoring`, {
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
-    if (!response.ok) {
-      throw new Error('Failed to fetch monitoring stats');
-    }
+    const response = await securedFetch(`${API_BASE_URL}/fixlog/monitoring`);
     return response.json();
   },
 
-  // New connector endpoints
   async getConnectors(type?: Connector['type']): Promise<Connector[]> {
     const params = type ? `?type=${type}` : '';
-    const response = await fetch(`${API_BASE_URL}/connectors${params}`, {
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
-    if (!response.ok) {
-      //throw new Error('Failed to fetch connectors');
-      console.log("Failed to fetch connectors");
-      return []
+    try {
+      const response = await securedFetch(`${API_BASE_URL}/connectors${params}`);
+      return response.json();
+    } catch (error) {
+      console.error("Failed to fetch connectors:", error);
+      return [];
     }
-    return response.json();
   },
 
   async getConnector(id: number): Promise<Connector> {
-    const response = await fetch(`${API_BASE_URL}/connectors/${id}`, {
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
-    if (!response.ok) {
-      throw new Error('Failed to fetch connector');
-    }
+    const response = await securedFetch(`${API_BASE_URL}/connectors/${id}`);
     return response.json();
   },
 
   async createConnector(request: CreateConnectorRequest): Promise<Connector> {
-    const response = await fetch(`${API_BASE_URL}/connectors`, {
+    const response = await securedFetch(`${API_BASE_URL}/connectors`, {
       method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify(request),
     });
-    if (!response.ok) {
-      throw new Error('Failed to create connector');
-    }
     return response.json();
   },
 
   async updateConnector(id: number, request: UpdateConnectorRequest): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/connectors/${id}`, {
+    await securedFetch(`${API_BASE_URL}/connectors/${id}`, {
       method: 'PUT',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify(request),
     });
-    if (!response.ok) {
-      throw new Error('Failed to update connector');
-    }
   },
 
   async deleteConnector(id: number): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/connectors/${id}`, {
+    await securedFetch(`${API_BASE_URL}/connectors/${id}`, {
       method: 'DELETE',
-      headers: {
-        'Accept': 'application/json',
-      },
     });
-    if (!response.ok) {
-      throw new Error('Failed to delete connector');
-    }
   },
 
   async toggleConnector(id: number): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/connectors/${id}/toggle`, {
+    await securedFetch(`${API_BASE_URL}/connectors/${id}/toggle`, {
       method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-      },
     });
-    if (!response.ok) {
-      throw new Error('Failed to toggle connector');
-    }
   },
 
   async uploadFixFiles(files: File[]): Promise<{ sessionId: string, message: string }> {
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+
     const formData = new FormData();
     files.forEach(file => {
-        formData.append('files', file); // Changed from 'file' to 'files' to match backend
+      formData.append('files', file);
     });
 
     const response = await fetch(`${API_BASE_URL}/files/upload`, {
-        method: 'POST',
-        body: formData,
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
     });
 
-    if (!response.ok) {
-        throw new Error('Failed to upload files');
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+      throw new Error('Authentication expired');
     }
+
+    if (!response.ok) {
+      throw new Error('Failed to upload files');
+    }
+
     return response.json();
   },
 
@@ -250,23 +320,14 @@ export const api = {
     clOrderId?: string;
   }): Promise<OrderFlowResponse> {
     const queryString = new URLSearchParams();
-    
+
     if (params.orderId) queryString.append('orderId', params.orderId);
     queryString.append('trackingMode', params.trackingMode ?? 'OrderId');
     if (params.symbol) queryString.append('symbol', params.symbol);
     if (params.pageSize) queryString.append('pageSize', params.pageSize.toString());
     if (params.pageNumber) queryString.append('pageNumber', params.pageNumber.toString());
 
-    const response = await fetch(`${API_BASE_URL}/OrderFlow?${queryString}`, {
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch order flow');
-    }
-    
+    const response = await securedFetch(`${API_BASE_URL}/OrderFlow?${queryString}`);
     return response.json();
-  },
+  }
 };

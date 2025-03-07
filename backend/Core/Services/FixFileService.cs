@@ -8,7 +8,7 @@ namespace FixMessageAnalyzer.Core.Services
 {
     public interface IFixFileService
     {
-        Task<string> ProcessFixLogFileAsync(Stream fileStream, string fixVersion = null);
+        Task<string> ProcessFixLogFileAsync(Stream fileStream, int userId, string fixVersion = null);
     }
 }
 
@@ -33,7 +33,7 @@ namespace FixMessageAnalyzer.Core.Services
             _logger = logger;
         }
 
-        public async Task<string> ProcessFixLogFileAsync(Stream fileStream, string fixVersion = null)
+        public async Task<string> ProcessFixLogFileAsync(Stream fileStream, int userId, string fixVersion = null)
         {
             string sessionId = Guid.NewGuid().ToString();
             _logger.LogInformation($"Processing FIX log file with sessionId: {sessionId}, version: {fixVersion ?? "auto-detect"}");
@@ -48,6 +48,7 @@ namespace FixMessageAnalyzer.Core.Services
                 if (fixMessage != null)
                 {
                     fixMessage.SessionId = sessionId;
+                    fixMessage.UserId = userId;
 
                     // Validate the message
                     var validationResult = _fixValidator.ValidateMessage(fixMessage);

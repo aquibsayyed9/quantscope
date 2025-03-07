@@ -14,6 +14,7 @@ namespace FixMessageAnalyzer.Data
 
         public DbSet<FixMessage> Messages { get; set; }
         public DbSet<Connector> Connectors { get; set; }
+        public DbSet<User> Users { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -163,7 +164,7 @@ namespace FixMessageAnalyzer.Data
                     .HasColumnName("created_at")
                     .HasDefaultValueSql("CURRENT_TIMESTAMP")
                     .IsRequired();
-                               
+
 
                 // Add indexes for common queries
                 entity.HasIndex(e => e.Timestamp)
@@ -173,7 +174,7 @@ namespace FixMessageAnalyzer.Data
                 entity.HasIndex(e => e.SenderCompID)
                     .HasDatabaseName("idx_messages_sender");
                 entity.HasIndex(e => e.TargetCompID)
-                    .HasDatabaseName("idx_messages_target");                
+                    .HasDatabaseName("idx_messages_target");
                 entity.HasIndex(e => e.Symbol)
                     .HasDatabaseName("idx_messages_symbol");
                 entity.HasIndex(e => e.ClOrdID)
@@ -191,6 +192,15 @@ namespace FixMessageAnalyzer.Data
                 // Add an index on SessionId for faster session-based queries
                 entity.HasIndex(e => e.SessionId)
                     .HasDatabaseName("idx_messages_session_id");
+
+                // Add a foreign key to the Users table
+                entity.Property(e => e.UserId)
+                    .HasColumnName("user_id");
+
+                entity.HasOne(e => e.User)
+                    .WithMany(u => u.Messages)
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             modelBuilder.Entity<Connector>(entity =>
@@ -246,6 +256,38 @@ namespace FixMessageAnalyzer.Data
 
                 entity.HasIndex(e => e.IsActive)
                     .HasDatabaseName("idx_connectors_is_active");
+            });
+
+            modelBuilder.Entity<User>(entity =>
+            {
+                entity.ToTable("users");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id)
+                    .HasColumnName("id")
+                    .UseIdentityColumn();
+
+                entity.Property(e => e.Email)
+                    .HasColumnName("email")
+                    .HasMaxLength(255)
+                    .IsRequired();
+
+                entity.Property(e => e.PasswordHash)
+                    .HasColumnName("password_hash")
+                    .HasMaxLength(255)
+                    .IsRequired();
+
+                entity.Property(e => e.CreatedAt)
+                    .HasColumnName("created_at")
+                    .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                    .IsRequired();
+
+                entity.Property(e => e.LastLogin)
+                    .HasColumnName("last_login");
+
+                entity.HasIndex(e => e.Email)
+                    .IsUnique()
+                    .HasDatabaseName("idx_users_email");
             });
         }
     }

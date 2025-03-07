@@ -7,7 +7,8 @@ namespace FixMessageAnalyzer.Services
 {
     public interface IFixMessageService
     {
-        Task<List<FixMessage>> GetMessagesAsync(string[]? msgTypes, string? orderId, DateTime? startTime, DateTime? endTime, int page = 1, int pageSize = 100, bool skipHeartbeats = false);
+        Task<List<FixMessage>> GetMessagesAsync(int userId, string[]? msgTypes, string? orderId, DateTime? startTime, DateTime? endTime, int page = 1, 
+            int pageSize = 100, bool skipHeartbeats = false);
     }
 }
 
@@ -23,6 +24,7 @@ namespace FixMessageAnalyzer.Services
         }
 
         public async Task<List<FixMessage>> GetMessagesAsync(
+        int userId,
         string[]? msgTypes,
         string? orderId,
         DateTime? startTime,
@@ -37,6 +39,7 @@ namespace FixMessageAnalyzer.Services
             if (pageSize > 1000) pageSize = 1000; // Set a reasonable maximum
 
             var query = _dbContext.Messages.AsQueryable();
+            query = query.Where(m => m.UserId == userId);
 
             // If no filters are applied, get latest messages
             if ((msgTypes == null || !msgTypes.Any()) &&
@@ -44,9 +47,6 @@ namespace FixMessageAnalyzer.Services
                 !startTime.HasValue &&
                 !endTime.HasValue)
             {
-                if (skipHeartbeats)
-                    query = query.Where(m => m.MsgType != "0" && m.MsgType != "1");
-
                 return await query
                     .OrderByDescending(m => m.SequenceNumber)
                     .Skip((page - 1) * pageSize)

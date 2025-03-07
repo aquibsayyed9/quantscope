@@ -1,12 +1,15 @@
 ﻿using FixMessageAnalyzer.Services;
 using FixMessageAnalyzer.Data.DTOs;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using FixMessageAnalyzer.Api.Controllers;
 
 namespace FixMessageAnalyzer.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/[controller]")]
-    public class OrderFlowController : ControllerBase
+    public class OrderFlowController : BaseApiController
     {
         private readonly IFixOrderService _orderService;
 
@@ -65,7 +68,7 @@ namespace FixMessageAnalyzer.Controllers
                 PageNumber = pageNumber
             };
 
-            var result = await _orderService.GetOrderFlowAsync(filter);
+            var result = await _orderService.GetOrderFlowAsync(GetCurrentUserId(), filter);
             return Ok(result);
         }
 
@@ -92,7 +95,7 @@ namespace FixMessageAnalyzer.Controllers
                 TrackingMode = OrderTrackingMode.OrderId // Force OrderId mode for backward compatibility
             };
 
-            var result = await _orderService.GetOrderFlowAsync(filter);
+            var result = await _orderService.GetOrderFlowAsync(GetCurrentUserId(), filter);
             return Ok(result);
         }
     }

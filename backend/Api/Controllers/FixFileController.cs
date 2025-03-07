@@ -4,12 +4,14 @@ using FixMessageAnalyzer.Services;
 using System.Threading.Tasks;
 using FixMessageAnalyzer.Core.Services;
 using Serilog;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FixMessageAnalyzer.Api.Controllers
 {
     [Route("api/files")]
+    [Authorize]
     [ApiController]
-    public class FixFileController : ControllerBase
+    public class FixFileController : BaseApiController
     {
         private readonly IFixFileService _fixFileService;
         private readonly IFixDictionaryService _dictionaryService;
@@ -45,12 +47,16 @@ namespace FixMessageAnalyzer.Api.Controllers
                 {
                     Log.Information("Uploading file: {FileName}, Version: {Version}", file.FileName, fixVersion ?? "auto-detect");
                     using var stream = file.OpenReadStream();
-                    var sessionId = await _fixFileService.ProcessFixLogFileAsync(stream, fixVersion);
+                    var sessionId = await _fixFileService.ProcessFixLogFileAsync(stream, GetCurrentUserId(), fixVersion);
                     Log.Information("File processed successfully: {FileName}", file.FileName);
                     results.Add(new { sessionId, fileName = file.FileName, fixVersion = fixVersion ?? "auto-detect" });
                 }
 
-                return Ok(new { sessions = results, message = "Files processed successfully." });
+                return Ok(new
+                {
+                    sessions = results,
+                    message = "Files processed successfully."
+                });
             }
             catch (Exception ex)
             {

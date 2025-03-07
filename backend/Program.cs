@@ -1,11 +1,13 @@
 ﻿using FixMessageAnalyzer.Data;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using Microsoft.AspNetCore.Http.Features;
 using FixMessageAnalyzer.Core.Services;
 using Serilog;
 using FixMessageAnalyzer.Api.Middleware;
 using Serilog.Formatting.Json;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 namespace FixMessageAnalyzer
 {
@@ -52,6 +54,7 @@ namespace FixMessageAnalyzer
                     )
                 );
 
+                // CORS
                 builder.Services.AddCors(options =>
                 {
                     options.AddPolicy("AllowAll",
@@ -61,6 +64,25 @@ namespace FixMessageAnalyzer
                                 .AllowAnyHeader()
                                 .AllowAnyMethod();
                         });
+                });
+
+                // JWT Authentication
+                var jwtKey = builder.Configuration["JWT:Secret"] ?? "your_default_secret_key_at_least_16_chars_long";
+                builder.Services.AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                })
+                .AddJwtBearer(options =>
+                {
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+                        ValidateIssuer = false,
+                        ValidateAudience = false,
+                        ClockSkew = TimeSpan.Zero
+                    };
                 });
 
                 var app = builder.Build();
@@ -93,6 +115,7 @@ namespace FixMessageAnalyzer
                 }
 
                 app.UseCors("AllowAll");
+                app.UseAuthentication(); // Authentication must come BEFORE Authorization
                 app.UseAuthorization();
                 app.MapControllers();
 

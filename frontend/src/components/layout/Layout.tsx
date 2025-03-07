@@ -1,11 +1,8 @@
-import { ReactNode } from 'react';
+// src/components/layout/Layout.tsx
+import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 
-interface LayoutProps {
-  children: ReactNode;
-}
-
-const Layout = ({ children }: LayoutProps) => {
+const Layout = () => {
   return (
     <div className="min-h-screen bg-slate-50">
       <Sidebar />
@@ -13,7 +10,7 @@ const Layout = ({ children }: LayoutProps) => {
         <header className="h-16 bg-white border-b flex items-center px-6 fixed top-0 right-0 left-64">
         </header>
         <main className="pt-16 p-6">
-          {children}
+          <Outlet />
         </main>
       </div>
     </div>
