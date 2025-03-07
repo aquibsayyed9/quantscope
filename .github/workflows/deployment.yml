@@ -58,7 +58,7 @@ jobs:
             fi
 
             # Navigate to deployment directory
-            cd /home/${{ secrets.ORACLE_VM_USER }}/deployment
+            cd /home/${{ secrets.ORACLE_VM_USER }}/quantscope-repo/deployment
 
             # Create the .env file with database credentials
             echo "DB_HOST=${{ vars.DB_HOST }}" > .env
