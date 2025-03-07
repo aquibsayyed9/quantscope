@@ -6,8 +6,6 @@ services:
       - "9090:8080"
     environment:
       - ConnectionStrings__pgsqlconnection=Host=${DB_HOST};Database=${DB_NAME};Username=${DB_USER};Password=${DB_PASSWORD};Port=${DB_PORT}
-    depends_on:
-      - frontend
     volumes:
       - ./logs:/app/logs
     networks:
