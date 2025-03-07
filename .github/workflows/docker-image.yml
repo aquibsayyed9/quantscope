@@ -3,11 +3,12 @@ name: Deploy QuantScope App
 on:
   push:
     branches:
-      - main  # Change if needed
+      - main  # Change this if needed
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production  # Set the environment name here
 
     steps:
       - name: Checkout Repository
@@ -42,5 +43,5 @@ jobs:
             # Stop and remove existing containers
             docker-compose down
 
-            # Start only frontend & backend, excluding database
+            # Start only frontend & backend (excluding database)
             docker-compose up -d backend frontend
