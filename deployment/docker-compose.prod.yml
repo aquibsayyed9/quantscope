@@ -1,0 +1,18 @@
+services:
+  backend:
+    container_name: fix-backend
+    image: ${BACKEND_IMAGE:-aquibsayyed9/fixtool-quantscope-backend:latest}
+    network_mode: host
+    environment:
+      - ConnectionStrings__pgsqlconnection=Host=127.0.0.1;Database=${DB_NAME:-quantscopedb};Username=${DB_USER:-quantuser};Password=${DB_PASSWORD:-quantpassword};Port=${DB_PORT:-5432}
+    volumes:
+      - ./logs:/app/logs
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-aquibsayyed9/fixtool-quantscope-frontend:latest}
+    environment:
+      - VITE_API_BASE_URL=http://localhost:9090/api
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend

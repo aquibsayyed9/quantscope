@@ -59,16 +59,13 @@ jobs:
 
             # Navigate to deployment directory
             cd /home/${{ secrets.ORACLE_VM_USER }}/quantscope-repo/deployment
-
-            # Create the .env file with database credentials
-            #echo "DB_HOST=${{ vars.DB_HOST }}" > .env
-            echo "DB_HOST=127.0.0.1" > .env
-            echo "DB_NAME=${{ vars.DB_NAME }}" >> .env
-            echo "DB_USER=${{ secrets.DB_USER }}" >> .env
-            echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
-            echo "DB_PORT=${{ vars.DB_PORT }}" >> .env
-            echo "DB_PROFILE=production" >> .env
-            echo "NETWORK_MODE=host" >> .env
+            
+            cat > .env << EOF
+            DB_NAME=${{ secrets.DB_NAME }}
+            DB_USER=${{ secrets.DB_USER }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            DB_PORT=${{ secrets.DB_PORT }}
+            EOF
 
             # Ensure Docker Compose is installed
             sudo apt update
@@ -82,4 +79,4 @@ jobs:
             docker compose down
 
             # Start backend & frontend with environment variables
-            docker compose --env-file .env up -d backend frontend
+            docker compose -f docker-compose.prod.yml --env-file .env up -d
