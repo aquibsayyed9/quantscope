@@ -5,11 +5,12 @@ services:
     ports:
       - "9090:8080"
     environment:
-      - ConnectionStrings__pgsqlconnection=Host=${DB_HOST};Database=${DB_NAME};Username=${DB_USER};Password=${DB_PASSWORD};Port=${DB_PORT}
+      - ConnectionStrings__pgsqlconnection=Host=${DB_HOST:-database};Database=${DB_NAME:-quantscopedb};Username=${DB_USER:-quantuser};Password=${DB_PASSWORD:-quantpassword};Port=${DB_PORT:-5432}
     volumes:
       - ./logs:/app/logs
     networks:
       - app-network
+    network_mode: ${NETWORK_MODE:-bridge}
 
   database:
     build: 
@@ -30,6 +31,7 @@ services:
       retries: 5
     networks:
       - app-network
+    profiles: ${DB_PROFILE:-}
 
   frontend:
     build: ../frontend
