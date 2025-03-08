@@ -16,16 +16,29 @@ jobs:
 
       - name: Log in to Docker Hub
         run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+      
+      - name: Set up QEMU for multi-arch builds
+        uses: docker/setup-qemu-action@v2
 
-      - name: Build and Push Backend Image
-        run: |
-          docker build -t aquibsayyed9/fixtool-quantscope-backend:latest ./backend
-          docker push aquibsayyed9/fixtool-quantscope-backend:latest
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-      - name: Build and Push Frontend Image
+      - name: Create Buildx Builder
+        run: docker buildx create --use
+
+      - name: Build and Push Backend Image (Multi-Arch)
         run: |
-          docker build -t aquibsayyed9/fixtool-quantscope-frontend:latest ./frontend
-          docker push aquibsayyed9/fixtool-quantscope-frontend:latest
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            -t aquibsayyed9/fixtool-quantscope-backend:latest \
+            -t aquibsayyed9/fixtool-quantscope-backend:${{ github.sha }} \
+            --push ./backend
+
+      - name: Build and Push Frontend Image (Multi-Arch)
+        run: |
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            -t aquibsayyed9/fixtool-quantscope-frontend:latest \
+            -t aquibsayyed9/fixtool-quantscope-frontend:${{ github.sha }} \
+            --push ./frontend
 
       - name: Deploy to Oracle VM
         uses: appleboy/ssh-action@v0.1.10
@@ -35,48 +48,49 @@ jobs:
           key: ${{ secrets.ORACLE_SSH_PRIVATE_KEY }}
           envs: DB_HOST,DB_NAME,DB_USER,DB_PASSWORD,DB_PORT
           script: |
-            # Navigate to the home directory
+            set -e  # Stop execution if any command fails
+
+            echo "🚀 Starting deployment on Oracle VM..."
+
             cd /home/${{ secrets.ORACLE_VM_USER }}
 
-            # Clone the repo if not already present
+            # Ensure the repository is cloned (shallow clone for efficiency)
             if [ ! -d "quantscope-repo" ]; then
-              git clone https://github.com/aquibsayyed9/quantscope.git quantscope-repo
+              git clone --depth=1 https://github.com/aquibsayyed9/quantscope.git quantscope-repo
             else
               cd quantscope-repo
               git pull origin main
             fi
 
-            # Verify the repository contents
-            ls -la /home/${{ secrets.ORACLE_VM_USER }}/quantscope-repo
-
-            # Ensure deployment folder exists before copying
-            if [ -d "/home/${{ secrets.ORACLE_VM_USER }}/quantscope-repo/deployment" ]; then
-              cp -r /home/${{ secrets.ORACLE_VM_USER }}/quantscope-repo/deployment /home/${{ secrets.ORACLE_VM_USER }}/
-            else
-              echo "Error: deployment folder not found in the repository!"
+            # Ensure deployment folder exists
+            if [ ! -d "/home/${{ secrets.ORACLE_VM_USER }}/quantscope-repo/deployment" ]; then
+              echo "❌ Error: deployment folder not found in the repository!"
               exit 1
             fi
 
-            # Navigate to deployment directory
             cd /home/${{ secrets.ORACLE_VM_USER }}/quantscope-repo/deployment
             
+            echo "📌 Creating .env file..."
             cat > .env << EOF
-            DB_NAME=${{ secrets.DB_NAME }}
-            DB_USER=${{ secrets.DB_USER }}
-            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-            DB_PORT=${{ secrets.DB_PORT }}
+            DB_NAME="${{ secrets.DB_NAME }}"
+            DB_USER="${{ secrets.DB_USER }}"
+            DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
+            DB_PORT="${{ secrets.DB_PORT }}"
             EOF
 
-            # Ensure Docker Compose is installed
-            sudo apt update
-            sudo apt install -y docker-compose-plugin
+            echo "✅ Environment file created successfully!"
 
-            # Pull latest images
+            echo "🔄 Updating system packages..."
+            sudo apt update && sudo apt install -y docker-compose docker-compose-plugin
+
+            echo "📦 Pulling latest Docker images..."
             docker pull aquibsayyed9/fixtool-quantscope-backend:latest
             docker pull aquibsayyed9/fixtool-quantscope-frontend:latest
 
-            # Stop and remove existing containers
-            docker compose down
+            echo "🛑 Stopping and removing existing containers..."
+            docker compose down || echo "No running containers found."
 
-            # Start backend & frontend with environment variables
-            docker compose -f docker-compose.prod.yml --env-file .env up -d
+            echo "🚀 Starting new deployment..."
+            docker compose -f docker-compose.prod.yml --env-file .env up -d --force-recreate
+
+            echo "✅ Deployment completed successfully!"
