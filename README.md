@@ -42,7 +42,7 @@ In financial trading, **FIX (Financial Information eXchange) protocol** is the b
 
 ```sh
 git clone https://github.com/yourusername/QuantScopeApp.git
-cd QuantScopeApp
+cd deployment/QuantScopeApp
 docker-compose up --build
 ```
 
