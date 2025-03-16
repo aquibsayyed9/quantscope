@@ -11,7 +11,7 @@ services:
   frontend:
     image: ${FRONTEND_IMAGE:-aquibsayyed9/fixtool-quantscope-frontend:latest}
     environment:
-      - VITE_API_BASE_URL=http://localhost:9090/api
+      - VITE_API_BASE_URL=https://fixtool.quantscopeapp.com/api
     ports:
       - "5173:5173"
     depends_on:
