@@ -1,13 +1,15 @@
 # Base image for running the .NET application
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
 WORKDIR /app
-EXPOSE 8080
-EXPOSE 8081
+#EXPOSE 8080
+#EXPOSE 8081
+EXPOSE 9090
 
 # Ensure logs are visible in stdout (important for Docker)
 ENV DOTNET_USE_POLLING_FILE_WATCHER 1
 ENV ASPNETCORE_LOGGING__CONSOLE__DISABLECOLORS false
-ENV ASPNETCORE_URLS http://0.0.0.0:8080
+#ENV ASPNETCORE_URLS http://0.0.0.0:8080
+ENV ASPNETCORE_URLS http://0.0.0.0:9090
 ENV DOTNET_RUNNING_IN_CONTAINER true
 
 # Build stage: Compile the application

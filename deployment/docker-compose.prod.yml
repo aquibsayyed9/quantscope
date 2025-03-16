@@ -7,6 +7,8 @@ services:
       - ConnectionStrings__pgsqlconnection=Host=127.0.0.1;Database=${DB_NAME:-quantscopedb};Username=${DB_USER:-quantuser};Password=${DB_PASSWORD:-quantpassword};Port=${DB_PORT:-5432}
     volumes:
       - ./logs:/app/logs
+    ports:
+      - "9090:9090"
 
   frontend:
     image: ${FRONTEND_IMAGE:-aquibsayyed9/fixtool-quantscope-frontend:latest}
